@@ -10,6 +10,7 @@ import type {
   AnalysisErrorResponse,
   AnalysisSuccessResponse,
 } from "@/src/lib/analysis/types";
+import { getDemoSnapshot, DEMO_CAPTURED_AT } from "@/src/lib/demo/scenarios";
 import { evaluateProbabilityConstraint } from "@/src/lib/logic";
 import { fetchEventBySlug, PolymarketApiError } from "@/src/lib/polymarket/client";
 import { outcomeProbability } from "@/src/lib/polymarket/probability";
@@ -19,6 +20,7 @@ const analyzeRequestSchema = z
     eventSlug: z.string().trim().min(1).max(240),
     marketAId: z.string().trim().min(1).max(160),
     marketBId: z.string().trim().min(1).max(160),
+    dataSource: z.enum(["live", "snapshot"]),
   })
   .strict()
   .refine((value) => value.marketAId !== value.marketBId, {
@@ -84,7 +86,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const event = await fetchEventBySlug(parsedRequest.data.eventSlug);
+    const event =
+      parsedRequest.data.dataSource === "snapshot"
+        ? getDemoSnapshot(parsedRequest.data.eventSlug)
+        : await fetchEventBySlug(parsedRequest.data.eventSlug);
+
+    if (!event) {
+      return errorResponse(
+        "snapshot_not_found",
+        "The requested demo snapshot is not available.",
+        false,
+        404,
+      );
+    }
     const marketA = event.markets.find(
       (market) => market.id === parsedRequest.data.marketAId,
     );
@@ -157,6 +171,11 @@ export async function POST(request: Request) {
       ok: true,
       analysis: {
         model: featherlessModel(),
+        dataSource: parsedRequest.data.dataSource,
+        capturedAt:
+          parsedRequest.data.dataSource === "snapshot"
+            ? DEMO_CAPTURED_AT
+            : null,
         relationship,
         constraint,
         explanation,

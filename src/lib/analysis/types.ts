@@ -8,6 +8,8 @@ export type AnalyzedMarket = {
 
 export type AnalysisResult = {
   model: string;
+  dataSource: "live" | "snapshot";
+  capturedAt: string | null;
   relationship: SemanticRelationship;
   constraint: ConstraintResult;
   explanation: string;

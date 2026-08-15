@@ -6,6 +6,7 @@ import type {
   AnalysisResult,
   AnalyzeResponse,
 } from "@/src/lib/analysis/types";
+import type { DemoScenario } from "@/src/lib/demo/scenarios";
 import type { EventSummary } from "@/src/lib/polymarket/types";
 import type {
   DashboardEvent,
@@ -131,14 +132,19 @@ function ResultPanel({ analysis }: { analysis: AnalysisResult }) {
             Relationship verification
           </h2>
         </div>
-        <span
-          className={
-            "rounded-full border px-4 py-2 font-mono text-xs font-bold tracking-[0.16em] " +
-            verdictStyles[constraint.status]
-          }
-        >
-          {constraint.status.toUpperCase()}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-white/10 px-3 py-2 font-mono text-[9px] uppercase tracking-[0.13em] text-[#8fa198]">
+            {analysis.dataSource === "live" ? "Live input" : "Snapshot input"}
+          </span>
+          <span
+            className={
+              "rounded-full border px-4 py-2 font-mono text-xs font-bold tracking-[0.16em] " +
+              verdictStyles[constraint.status]
+            }
+          >
+            {constraint.status.toUpperCase()}
+          </span>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
@@ -243,15 +249,23 @@ function ResultPanel({ analysis }: { analysis: AnalysisResult }) {
 export function AnalysisDashboard({
   initialEvent,
   eventOptions,
+  demoScenarios,
+  initialSelectedIds,
 }: {
   initialEvent: DashboardEvent;
   eventOptions: EventSummary[];
+  demoScenarios: DemoScenario[];
+  initialSelectedIds: string[];
 }) {
   const [event, setEvent] = useState(initialEvent);
   const [eventQuery, setEventQuery] = useState("");
   const [isEventLoading, setIsEventLoading] = useState(false);
   const [eventError, setEventError] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>(
+    initialSelectedIds.filter((id) =>
+      initialEvent.markets.some((market) => market.id === id),
+    ),
+  );
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<{
     message: string;
@@ -292,8 +306,11 @@ export function AnalysisDashboard({
     });
   }
 
-  async function changeEvent(slug: string) {
-    if (slug === event.slug || isEventLoading) return;
+  async function changeEvent(
+    slug: string,
+    options: { curated?: boolean; preferredMarketIds?: string[] } = {},
+  ) {
+    if ((slug === event.slug && !options.curated) || isEventLoading) return;
 
     setIsEventLoading(true);
     setEventError(null);
@@ -301,7 +318,10 @@ export function AnalysisDashboard({
     setAnalysis(null);
 
     try {
-      const response = await fetch("/api/events/" + encodeURIComponent(slug));
+      const query = options.curated ? "?curated=1" : "";
+      const response = await fetch(
+        "/api/events/" + encodeURIComponent(slug) + query,
+      );
       const payload = (await response.json()) as {
         ok: boolean;
         event?: DashboardEvent;
@@ -314,7 +334,11 @@ export function AnalysisDashboard({
       }
 
       setEvent(payload.event);
-      setSelectedIds([]);
+      setSelectedIds(
+        (options.preferredMarketIds ?? []).filter((id) =>
+          payload.event?.markets.some((market) => market.id === id),
+        ),
+      );
     } catch {
       setEventError(
         "The event service could not be reached. The current event is preserved.",
@@ -339,6 +363,7 @@ export function AnalysisDashboard({
           eventSlug: event.slug,
           marketAId: selectedIds[0],
           marketBId: selectedIds[1],
+          dataSource: event.dataSource,
         }),
       });
       const payload = (await response.json()) as AnalyzeResponse;
@@ -365,7 +390,43 @@ export function AnalysisDashboard({
   return (
     <>
       <section className="border-b border-white/10 bg-[#0a1410] px-6 py-5 sm:px-8 lg:px-10">
-        <div className="grid gap-3 lg:grid-cols-[1fr_1.25fr]">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#758b81]">
+            Curated demo paths
+          </p>
+          <div className="mt-2 grid gap-2 md:grid-cols-3">
+            {demoScenarios.map((scenario) => {
+              const active = scenario.eventSlug === event.slug;
+              return (
+                <button
+                  className={
+                    "rounded-xl border px-4 py-3 text-left transition disabled:opacity-60 " +
+                    (active
+                      ? "border-[#b8f35d]/45 bg-[#b8f35d]/8"
+                      : "border-white/10 bg-[#111f19] hover:border-white/25")
+                  }
+                  disabled={isEventLoading}
+                  key={scenario.id}
+                  onClick={() =>
+                    changeEvent(scenario.eventSlug, {
+                      curated: true,
+                      preferredMarketIds: scenario.preferredMarketIds,
+                    })
+                  }
+                  type="button"
+                >
+                  <span className="block text-xs font-medium text-[#dce5e0]">
+                    {scenario.label}
+                  </span>
+                  <span className="mt-1 block font-mono text-[9px] uppercase tracking-[0.11em] text-[#758b81]">
+                    {scenario.relationshipHint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="mt-5 grid gap-3 border-t border-white/8 pt-5 lg:grid-cols-[1fr_1.25fr]">
           <label className="block">
             <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#758b81]">
               Search event list
@@ -411,8 +472,15 @@ export function AnalysisDashboard({
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="rounded-full border border-[#b8f35d]/25 bg-[#b8f35d]/8 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[#c9f58a]">
-              Live Polymarket data
+              {event.dataSource === "live"
+                ? "Live Polymarket data"
+                : "Polymarket snapshot"}
             </span>
+            {event.capturedAt ? (
+              <span className="font-mono text-[10px] uppercase tracking-[0.13em] text-amber-200">
+                Captured {formatDate(event.capturedAt)} · degraded demo
+              </span>
+            ) : null}
             <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#758b81]">
               {event.markets.length} active markets
             </span>

@@ -23,10 +23,18 @@ export type DashboardEvent = Pick<
   | "slug"
   | "negRisk"
 > & {
+  dataSource: "live" | "snapshot";
+  capturedAt: string | null;
   markets: DashboardMarket[];
 };
 
-export function toDashboardEvent(event: PredictionEvent): DashboardEvent {
+export function toDashboardEvent(
+  event: PredictionEvent,
+  metadata: {
+    dataSource?: "live" | "snapshot";
+    capturedAt?: string | null;
+  } = {},
+): DashboardEvent {
   return {
     id: event.id,
     title: event.title,
@@ -36,6 +44,8 @@ export function toDashboardEvent(event: PredictionEvent): DashboardEvent {
     volume: event.volume,
     slug: event.slug,
     negRisk: event.negRisk,
+    dataSource: metadata.dataSource ?? "live",
+    capturedAt: metadata.capturedAt ?? null,
     markets: event.markets.map((market) => ({
       id: market.id,
       eventId: market.eventId,

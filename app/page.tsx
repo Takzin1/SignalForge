@@ -1,6 +1,9 @@
 import { AnalysisDashboard } from "@/src/components/analysis-dashboard";
 import {
-  fetchEventBySlug,
+  DEMO_SCENARIOS,
+  resolveDemoEvent,
+} from "@/src/lib/demo/scenarios";
+import {
   fetchEventSummaries,
 } from "@/src/lib/polymarket/client";
 import type { EventSummary } from "@/src/lib/polymarket/types";
@@ -11,7 +14,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const DEMO_EVENT_SLUG = "putin-out-before-2027";
+const INITIAL_SCENARIO = DEMO_SCENARIOS[0];
 
 function DataError() {
   return (
@@ -36,12 +39,15 @@ export default async function Home() {
   let event: DashboardEvent | null = null;
   let eventOptions: EventSummary[] = [];
   const [eventResult, summariesResult] = await Promise.allSettled([
-    fetchEventBySlug(DEMO_EVENT_SLUG),
+    resolveDemoEvent(INITIAL_SCENARIO.eventSlug),
     fetchEventSummaries(100),
   ]);
 
   if (eventResult.status === "fulfilled") {
-    event = toDashboardEvent(eventResult.value);
+    event = toDashboardEvent(eventResult.value.event, {
+      dataSource: eventResult.value.dataSource,
+      capturedAt: eventResult.value.capturedAt,
+    });
   }
   if (summariesResult.status === "fulfilled") {
     eventOptions = summariesResult.value.slice(0, 12);
@@ -81,7 +87,12 @@ export default async function Home() {
           </span>
         </header>
         {event ? (
-          <AnalysisDashboard eventOptions={eventOptions} initialEvent={event} />
+          <AnalysisDashboard
+            demoScenarios={DEMO_SCENARIOS}
+            eventOptions={eventOptions}
+            initialEvent={event}
+            initialSelectedIds={INITIAL_SCENARIO.preferredMarketIds}
+          />
         ) : (
           <DataError />
         )}
