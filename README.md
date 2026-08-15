@@ -1,6 +1,8 @@
 # SignalForge
 
-> **AI interprets semantics. Code validates probability constraints.**
+> **AI understands the relationship. Mathematics verifies the probability.**
+
+## Overview
 
 SignalForge is an AI-powered logical consistency engine for prediction markets. It discovers related public Polymarket markets, uses Featherless to interpret their full resolution conditions, and applies deterministic TypeScript rules to verify the corresponding probability constraint.
 
@@ -10,14 +12,16 @@ SignalForge is an analytical research tool. It is not a betting app, trading bot
 
 ## Problem
 
-Prediction markets expose individual probabilities, but related propositions imply constraints that are difficult to monitor manually. A title-only comparison is unsafe: different deadlines, sources, and resolution wording can make apparently related questions incomparable.
+Prediction markets show individual probabilities, but related propositions can imply logical constraints that are difficult to monitor manually. A title-only comparison is unsafe: different deadlines, sources, and resolution wording can make apparently related questions incomparable.
 
-SignalForge separates this problem into two jobs:
+## Solution
+
+SignalForge uses AI for semantic relationship classification and deterministic code for probability verification:
 
 1. **Semantic interpretation:** an LLM examines both questions, descriptions, sources, dates, and event context.
 2. **Mathematical verification:** pure TypeScript applies the probability rule selected by the validated semantic result.
 
-The LLM never calculates or changes the verdict.
+**The LLM never decides whether the probability constraint passes or fails.**
 
 ## Demo
 
@@ -25,8 +29,8 @@ The deployed dashboard includes three curated, real-market paths:
 
 | Scenario | Relationship under review | Suggested pair |
 | --- | --- | --- |
-| Timeline prerequisite | Earlier deadline implies later deadline | Putin out by Aug 31 vs Sep 30, 2026 |
-| Mutually exclusive counts | Exact outcomes cannot both occur | 0 Fed cuts vs exactly 1 Fed cut in 2026 |
+| **Primary: mutually exclusive counts** | Exact outcomes cannot both occur | 0 Fed cuts vs exactly 1 Fed cut in 2026 |
+| **Backup: timeline prerequisite** | Earlier deadline implies later deadline | Putin out by Aug 31 vs Sep 30, 2026 |
 | Mutually exclusive nominees | Only one candidate can win | Kamala Harris vs Gavin Newsom for 2028 Democratic nominee |
 
 Each curated path attempts a fresh public API request first. If Polymarket is unavailable, the app uses an explicitly labelled snapshot captured on **2026-08-14 UTC**. It never presents snapshot values as live data. See [the demo scenarios](docs/DEMO_SCENARIOS.md) and [the three-minute demo script](docs/DEMO_SCRIPT.md).
@@ -37,11 +41,13 @@ The final public video URL will be added to this section before hackathon submis
 
 ```mermaid
 flowchart TD
-    A[Polymarket Gamma API] --> B[Defensive adapter]
-    B --> C[Normalized event and markets]
+    A[Polymarket public API] --> B[Market and event adapter]
+    B --> C[Defensive normalizer]
     C --> D[Selected market pair]
+    A -. upstream unavailable .-> S[Labelled snapshot fallback]
+    S --> D
     D --> E[Featherless semantic classifier]
-    E --> F[Strict JSON plus Zod]
+    E --> F[Structured JSON plus Zod]
     F --> G[Deterministic constraint engine]
     G --> H[PASS, WARNING, or ABSTAIN]
     H --> I[Grounded Featherless explanation]
@@ -51,6 +57,10 @@ flowchart TD
 All Featherless requests run in server-side route handlers. `FEATHERLESS_API_KEY` is never sent to the browser. The client receives a deliberately small projection of market data; full descriptions stay server-side for analysis.
 
 See [the technical overview](docs/TECHNICAL_OVERVIEW.md) for module boundaries, trust boundaries, and request flow.
+
+## Snapshot fallback
+
+Curated scenarios fetch live data first. If Polymarket times out or fails, the server supplies a source-controlled normalized snapshot for that exact event. The dashboard switches to a **Polymarket snapshot** badge, shows the capture date, and labels the state as a degraded demo. Snapshot data is never presented as live.
 
 ## AI pipeline
 
@@ -109,8 +119,8 @@ tests/                    logic, schema, adapter, demo, render tests
 Prerequisites: Node.js 22.13 or newer and a Featherless API key.
 
 ```bash
-git clone <public-repository-url>
-cd signalforge-impact-forge
+git clone https://github.com/Takzin1/SignalForge.git
+cd SignalForge
 npm ci
 cp .env.example .env.local
 npm run dev

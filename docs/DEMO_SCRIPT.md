@@ -1,61 +1,61 @@
 # SignalForge three-minute demo script
 
-Target runtime: **2:55**. Record at 1080p with browser zoom set so the full result panels are readable. Open the deployed app and preload the timeline scenario before recording.
+Target runtime: **2:58**. Record at 1080p with browser zoom set so both result cards are readable. The deployed app now opens with the primary Fed exact-count pair preselected.
 
 ## 0:00–0:20 — Problem
 
-> Prediction markets show individual probabilities, but related questions imply logical constraints that are hard to monitor manually. Titles alone are not enough because deadlines and resolution rules matter.
+> Prediction markets show individual probabilities, but related propositions can imply logical constraints that are difficult to monitor manually. Titles alone are not enough because resolution wording, sources, and dates matter.
 
-Show the event title and two preselected markets.
+Show the two preselected Fed markets.
 
-## 0:20–0:40 — Live data
+## 0:20–0:40 — SignalForge
 
-> SignalForge starts with public Polymarket event data. These probabilities are live, normalized server-side, and require no wallet or trading API key.
+> SignalForge combines two kinds of reasoning. AI understands the semantic relationship. Deterministic TypeScript verifies the probability constraint. It is an analytical tool—not a trading bot or financial advice.
 
-Point to the **Live Polymarket data** badge, probabilities, event volume, and dates. If the upstream is degraded, point to the explicit snapshot badge and capture date instead.
+Point to the product tagline and **Live Polymarket data** badge. If the upstream is degraded, explicitly point to the snapshot badge and capture date.
 
-## 0:40–1:20 — Analyze a relationship
+## 0:40–1:25 — Live workflow
 
-Click **Analyze Relationship**.
+> This public Polymarket event resolves on the exact number of Fed cuts in 2026. Zero cuts and exactly one cut cannot both happen, so I will analyze this preselected pair.
 
-> Featherless receives both full descriptions, resolution sources, time windows, and event context—not just the titles. Here it identifies the semantic relationship, direction, comparable scope, confidence, and reason.
+Click **Analyze Relationship**. While it loads, point to the current Yes probabilities, event dates, and the fact that no wallet or trading API key is required.
 
-Point to **AI interpretation**, relationship type, confidence bar, direction, and scope.
+When the result appears, show the verdict without promising a particular live value in advance.
 
-## 1:20–1:50 — Deterministic verification
+## 1:25–1:55 — AI semantic classification
 
-> The model does not do this math. A pure TypeScript engine takes the validated relationship and applies the corresponding probability constraint. It returns PASS, WARNING, or ABSTAIN, the expected rule, observed values, and exact gap.
+> Featherless receives both full market descriptions, resolution sources, time windows, and event context—not just their titles. It returns strict JSON containing the relationship, direction, comparable-scope decision, confidence, abstention flag, and reason. Zod validates that contract. Low confidence or mismatched scope forces ABSTAIN.
 
-Point to the verdict, expected constraint, P(A), P(B), and gap. Describe the displayed result; do not promise a specific live verdict before recording.
+Point to **AI interpretation**, the confidence bar, direction, and comparable scope.
 
-## 1:50–2:15 — Advanced inference pipeline
+## 1:55–2:20 — Deterministic mathematics
 
-> There are two bounded AI passes. The first emits strict JSON validated by Zod. The deterministic engine locks the verdict. A second Featherless pass explains only that computed result and cannot alter it. Low confidence or mismatched scope forces ABSTAIN.
+> The LLM never decides whether this constraint passes or fails. A pure TypeScript engine applies the rule P of A plus P of B must be no greater than one, then returns PASS, WARNING, or ABSTAIN with the observed values and exact gap.
 
-Point to **Verdict locked by TypeScript** and the explanation.
+Point to **Mathematical check**, P(A), P(B), constraint gap, and the verdict. Then point to **Verdict locked by TypeScript**: a second Featherless pass explains the computed result but cannot alter it.
 
-## 2:15–2:35 — Architecture
+## 2:20–2:40 — Architecture and safeguards
 
 Show the README architecture diagram.
 
-> The data adapter isolates raw Gamma responses, Featherless stays server-side, Zod protects the model boundary, and the constraint engine has no API or LLM dependencies.
+> Raw Gamma responses are isolated behind a defensive adapter. Featherless stays server-side. Structured output crosses a Zod boundary before the math engine. Curated events fall back to an explicitly labelled snapshot, never fake live data.
 
-## 2:35–2:50 — Reliability and quality
+## 2:40–2:55 — Reliability and solo execution
 
-Show the terminal with:
+Show the test output or README test section.
 
-```text
-30 tests passed
-npm run lint
-npm run vercel-build
-```
+> Built solo during Impact Forge Summer 2026, SignalForge has deterministic rule tests, PASS, WARNING and ABSTAIN coverage, malformed-model-output checks, defensive market parsing, snapshot integrity tests, CI, and zero production dependency vulnerabilities.
 
-> Tests cover every rule, PASS, WARNING, ABSTAIN, malformed model JSON, defensive market parsing, and curated fallback integrity. Upstream errors preserve user selections and return friendly retry states.
-
-## 2:50–3:00 — Close
+## 2:55–3:00 — Close
 
 Return to the result screen.
 
-> SignalForge turns semantic market relationships into verifiable analytical signals. AI understands the relationship. Mathematics verifies the probability.
+> AI understands the relationship. Mathematics verifies the probability.
 
-Stop recording by 2:58 to leave upload-platform timing margin.
+Stop immediately after the closing line; do not add a generic AI explanation or feature roadmap.
+
+## Recording fallback order
+
+1. Primary: Fed 0 cuts vs exactly 1 cut.
+2. Backup: Putin out by August 31 vs September 30, 2026.
+3. Last resort: rerun either curated scenario and clearly show the labelled snapshot state.

@@ -172,18 +172,18 @@ const SNAPSHOTS: Record<string, PredictionEvent> = {
 
 export const DEMO_SCENARIOS: DemoScenario[] = [
   {
-    id: "timeline",
-    label: "Timeline prerequisite",
-    relationshipHint: "Earlier deadline ⇒ later deadline",
-    eventSlug: "putin-out-before-2027",
-    preferredMarketIds: ["2822003", "2822005"],
-  },
-  {
     id: "exclusive-count",
     label: "Mutually exclusive counts",
     relationshipHint: "0 cuts and exactly 1 cut",
     eventSlug: "how-many-fed-rate-cuts-in-2026",
     preferredMarketIds: ["616902", "616903"],
+  },
+  {
+    id: "timeline",
+    label: "Timeline prerequisite",
+    relationshipHint: "Earlier deadline ⇒ later deadline",
+    eventSlug: "putin-out-before-2027",
+    preferredMarketIds: ["2822003", "2822005"],
   },
   {
     id: "exclusive-nominee",
