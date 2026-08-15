@@ -17,6 +17,12 @@ export const relationshipClassificationSchema = z
   })
   .strict();
 
+export const groundedExplanationSchema = z
+  .object({
+    summary: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+
 function extractJsonObject(content: string): string {
   const trimmed = content.trim();
   const withoutFence = trimmed
@@ -51,6 +57,27 @@ export function parseRelationshipClassification(
   }
 
   return parsed.data;
+}
+
+export function parseGroundedExplanation(content: string): string {
+  let parsedJson: unknown;
+
+  try {
+    parsedJson = JSON.parse(extractJsonObject(content));
+  } catch (error) {
+    throw new Error("The explanation model returned invalid JSON.", {
+      cause: error,
+    });
+  }
+
+  const parsed = groundedExplanationSchema.safeParse(parsedJson);
+  if (!parsed.success) {
+    throw new Error("The explanation failed schema validation.", {
+      cause: parsed.error,
+    });
+  }
+
+  return parsed.data.summary;
 }
 
 export function enforceSemanticAbstention(

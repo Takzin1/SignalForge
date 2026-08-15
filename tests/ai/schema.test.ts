@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { SemanticRelationship } from "../../src/lib/logic";
 import {
   enforceSemanticAbstention,
+  parseGroundedExplanation,
   parseRelationshipClassification,
   relationshipClassificationSchema,
 } from "../../src/lib/ai/schema";
@@ -49,6 +50,17 @@ describe("relationship classification schema", () => {
     expect(() =>
       parseRelationshipClassification(
         JSON.stringify({ relationship: "equivalent" }),
+      ),
+    ).toThrow("schema validation");
+  });
+
+  it("parses only the grounded explanation field", () => {
+    expect(
+      parseGroundedExplanation('{"summary":"The locked verdict is PASS."}'),
+    ).toBe("The locked verdict is PASS.");
+    expect(() =>
+      parseGroundedExplanation(
+        '{"summary":"Text","replacement_verdict":"WARNING"}',
       ),
     ).toThrow("schema validation");
   });
