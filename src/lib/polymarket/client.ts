@@ -1,5 +1,5 @@
 import { normalizeEvent, normalizeEventsPage } from "./normalize";
-import type { EventsPage, PredictionEvent } from "./types";
+import type { EventsPage, EventSummary, PredictionEvent } from "./types";
 
 const GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com";
 const REQUEST_TIMEOUT_MS = 8_000;
@@ -76,4 +76,17 @@ export async function fetchLiveEvents(limit = 20): Promise<EventsPage> {
     ...page,
     events: page.events.filter((event) => event.markets.length >= 2),
   };
+}
+
+export async function fetchEventSummaries(limit = 100): Promise<EventSummary[]> {
+  const page = await fetchLiveEvents(limit);
+  return page.events
+    .map((event) => ({
+      id: event.id,
+      title: event.title,
+      slug: event.slug,
+      marketCount: event.markets.length,
+      volume: event.volume,
+    }))
+    .sort((a, b) => (b.volume ?? 0) - (a.volume ?? 0));
 }

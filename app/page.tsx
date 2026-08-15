@@ -1,6 +1,13 @@
 import { AnalysisDashboard } from "@/src/components/analysis-dashboard";
-import { fetchEventBySlug } from "@/src/lib/polymarket/client";
-import type { PredictionEvent } from "@/src/lib/polymarket/types";
+import {
+  fetchEventBySlug,
+  fetchEventSummaries,
+} from "@/src/lib/polymarket/client";
+import type { EventSummary } from "@/src/lib/polymarket/types";
+import {
+  type DashboardEvent,
+  toDashboardEvent,
+} from "@/src/lib/polymarket/public";
 
 export const dynamic = "force-dynamic";
 
@@ -26,12 +33,30 @@ function DataError() {
 }
 
 export default async function Home() {
-  let event: PredictionEvent | null = null;
+  let event: DashboardEvent | null = null;
+  let eventOptions: EventSummary[] = [];
+  const [eventResult, summariesResult] = await Promise.allSettled([
+    fetchEventBySlug(DEMO_EVENT_SLUG),
+    fetchEventSummaries(100),
+  ]);
 
-  try {
-    event = await fetchEventBySlug(DEMO_EVENT_SLUG);
-  } catch {
-    event = null;
+  if (eventResult.status === "fulfilled") {
+    event = toDashboardEvent(eventResult.value);
+  }
+  if (summariesResult.status === "fulfilled") {
+    eventOptions = summariesResult.value.slice(0, 12);
+  }
+  if (event && !eventOptions.some((option) => option.slug === event?.slug)) {
+    eventOptions = [
+      {
+        id: event.id,
+        title: event.title,
+        slug: event.slug,
+        marketCount: event.markets.length,
+        volume: event.volume,
+      },
+      ...eventOptions,
+    ];
   }
 
   return (
@@ -55,7 +80,11 @@ export default async function Home() {
             Live analysis
           </span>
         </header>
-        {event ? <AnalysisDashboard event={event} /> : <DataError />}
+        {event ? (
+          <AnalysisDashboard eventOptions={eventOptions} initialEvent={event} />
+        ) : (
+          <DataError />
+        )}
         <footer className="border-t border-white/10 px-6 py-5 text-xs leading-5 text-[#758b81] sm:px-8">
           Analytical signals only. No trading, wallet connection, or financial
           advice.

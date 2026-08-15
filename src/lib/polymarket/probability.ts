@@ -1,7 +1,5 @@
-import type { Market } from "./types";
-
 export function outcomeProbability(
-  market: Market,
+  market: { outcomes: string[]; probabilities: number[] },
   outcomeName: string,
 ): number | null {
   const outcomeIndex = market.outcomes.findIndex(

@@ -6,7 +6,11 @@ import type {
   AnalysisResult,
   AnalyzeResponse,
 } from "@/src/lib/analysis/types";
-import type { Market, PredictionEvent } from "@/src/lib/polymarket/types";
+import type { EventSummary } from "@/src/lib/polymarket/types";
+import type {
+  DashboardEvent,
+  DashboardMarket,
+} from "@/src/lib/polymarket/public";
 import { outcomeProbability } from "@/src/lib/polymarket/probability";
 
 function formatUsd(value: number | null): string {
@@ -49,7 +53,7 @@ function MarketCard({
   selection,
   onToggle,
 }: {
-  market: Market;
+  market: DashboardMarket;
   index: number;
   selection: "A" | "B" | null;
   onToggle: () => void;
@@ -236,18 +240,43 @@ function ResultPanel({ analysis }: { analysis: AnalysisResult }) {
   );
 }
 
-export function AnalysisDashboard({ event }: { event: PredictionEvent }) {
+export function AnalysisDashboard({
+  initialEvent,
+  eventOptions,
+}: {
+  initialEvent: DashboardEvent;
+  eventOptions: EventSummary[];
+}) {
+  const [event, setEvent] = useState(initialEvent);
+  const [eventQuery, setEventQuery] = useState("");
+  const [isEventLoading, setIsEventLoading] = useState(false);
+  const [eventError, setEventError] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{
+    message: string;
+    retryable: boolean;
+  } | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const selectedMarkets = useMemo(
     () =>
       selectedIds
         .map((id) => event.markets.find((market) => market.id === id))
-        .filter((market): market is Market => Boolean(market)),
+        .filter((market): market is DashboardMarket => Boolean(market)),
     [event.markets, selectedIds],
   );
+  const filteredEventOptions = useMemo(() => {
+    const query = eventQuery.trim().toLowerCase();
+    const matches = query
+      ? eventOptions.filter((option) =>
+          option.title.toLowerCase().includes(query),
+        )
+      : eventOptions;
+    const current = eventOptions.find((option) => option.slug === event.slug);
+    return current && !matches.some((option) => option.slug === current.slug)
+      ? [current, ...matches]
+      : matches;
+  }, [event.slug, eventOptions, eventQuery]);
 
   function toggleMarket(id: string) {
     setAnalysis(null);
@@ -261,6 +290,38 @@ export function AnalysisDashboard({ event }: { event: PredictionEvent }) {
       }
       return [current[0], id];
     });
+  }
+
+  async function changeEvent(slug: string) {
+    if (slug === event.slug || isEventLoading) return;
+
+    setIsEventLoading(true);
+    setEventError(null);
+    setError(null);
+    setAnalysis(null);
+
+    try {
+      const response = await fetch("/api/events/" + encodeURIComponent(slug));
+      const payload = (await response.json()) as {
+        ok: boolean;
+        event?: DashboardEvent;
+        error?: string;
+      };
+
+      if (!response.ok || !payload.ok || !payload.event) {
+        setEventError(payload.error ?? "This event could not be loaded.");
+        return;
+      }
+
+      setEvent(payload.event);
+      setSelectedIds([]);
+    } catch {
+      setEventError(
+        "The event service could not be reached. The current event is preserved.",
+      );
+    } finally {
+      setIsEventLoading(false);
+    }
   }
 
   async function analyze() {
@@ -283,14 +344,19 @@ export function AnalysisDashboard({ event }: { event: PredictionEvent }) {
       const payload = (await response.json()) as AnalyzeResponse;
 
       if (!payload.ok) {
-        setError(payload.error.message);
+        setError({
+          message: payload.error.message,
+          retryable: payload.error.retryable,
+        });
         return;
       }
       setAnalysis(payload.analysis);
     } catch {
-      setError(
-        "The analysis service could not be reached. Your market selections are preserved.",
-      );
+      setError({
+        message:
+          "The analysis service could not be reached. Your market selections are preserved.",
+        retryable: true,
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -298,6 +364,49 @@ export function AnalysisDashboard({ event }: { event: PredictionEvent }) {
 
   return (
     <>
+      <section className="border-b border-white/10 bg-[#0a1410] px-6 py-5 sm:px-8 lg:px-10">
+        <div className="grid gap-3 lg:grid-cols-[1fr_1.25fr]">
+          <label className="block">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#758b81]">
+              Search event list
+            </span>
+            <input
+              className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#111f19] px-4 text-sm text-[#edf3ef] outline-none transition placeholder:text-[#5f746a] focus:border-[#b8f35d]/50"
+              onChange={(event) => setEventQuery(event.target.value)}
+              placeholder="Election, rates, company..."
+              type="search"
+              value={eventQuery}
+            />
+          </label>
+          <label className="block">
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#758b81]">
+              Live Polymarket event
+            </span>
+            <div className="relative mt-2">
+              <select
+                className="min-h-11 w-full appearance-none rounded-xl border border-white/10 bg-[#111f19] px-4 pr-10 text-sm text-[#edf3ef] outline-none transition focus:border-[#b8f35d]/50 disabled:opacity-60"
+                disabled={isEventLoading}
+                onChange={(change) => changeEvent(change.target.value)}
+                value={event.slug}
+              >
+                {filteredEventOptions.map((option) => (
+                  <option key={option.id} value={option.slug}>
+                    {option.title} · {option.marketCount} markets
+                  </option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#758b81]">
+                {isEventLoading ? "…" : "⌄"}
+              </span>
+            </div>
+          </label>
+        </div>
+        {eventError ? (
+          <p aria-live="polite" className="mt-3 text-xs text-amber-200">
+            {eventError}
+          </p>
+        ) : null}
+      </section>
       <section className="grid gap-8 border-b border-white/10 px-6 py-10 sm:px-8 lg:grid-cols-[1fr_auto] lg:px-10">
         <div>
           <div className="flex flex-wrap items-center gap-3">
@@ -404,15 +513,19 @@ export function AnalysisDashboard({ event }: { event: PredictionEvent }) {
               <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-amber-200">
                 Analysis unavailable
               </p>
-              <p className="mt-2 text-sm leading-6 text-[#c9d3ce]">{error}</p>
+              <p className="mt-2 text-sm leading-6 text-[#c9d3ce]">
+                {error.message}
+              </p>
             </div>
-            <button
-              className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-[#d5dfda] hover:border-white/25"
-              onClick={analyze}
-              type="button"
-            >
-              Retry
-            </button>
+            {error.retryable ? (
+              <button
+                className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-[#d5dfda] hover:border-white/25"
+                onClick={analyze}
+                type="button"
+              >
+                Retry
+              </button>
+            ) : null}
           </div>
         ) : null}
 

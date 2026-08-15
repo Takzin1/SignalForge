@@ -33,3 +33,11 @@ export type EventsPage = {
   events: PredictionEvent[];
   nextCursor: string | null;
 };
+
+export type EventSummary = {
+  id: string;
+  title: string;
+  slug: string;
+  marketCount: number;
+  volume: number | null;
+};
