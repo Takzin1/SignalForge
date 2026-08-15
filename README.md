@@ -2,71 +2,121 @@
 
 > **AI interprets semantics. Code validates probability constraints.**
 
-SignalForge is an AI-powered logical consistency engine for prediction markets. It discovers related public Polymarket markets, uses Featherless to interpret whether their resolution conditions imply a formal relationship, and applies deterministic TypeScript rules to verify the corresponding probability constraint.
+SignalForge is an AI-powered logical consistency engine for prediction markets. It discovers related public Polymarket markets, uses Featherless to interpret their full resolution conditions, and applies deterministic TypeScript rules to verify the corresponding probability constraint.
 
-SignalForge is an analytical research tool. It is not a betting app, trading bot, wallet, order-execution client, or source of financial advice.
+[Open the live application](https://signalforge-impact-forge.taka0101ty.chatgpt.site)
 
-## Status
-
-Stage A foundation is complete. Live market discovery, deterministic rules, and Featherless inference will be implemented as isolated vertical slices before product polish.
+SignalForge is an analytical research tool. It is not a betting app, trading bot, wallet, order-execution client, arbitrage executor, or source of financial advice.
 
 ## Problem
 
-Prediction markets expose individual probabilities, but related propositions can imply constraints that are difficult to monitor manually at scale. Correct analysis requires both semantic interpretation of resolution conditions and exact mathematical verification.
+Prediction markets expose individual probabilities, but related propositions imply constraints that are difficult to monitor manually. A title-only comparison is unsafe: different deadlines, sources, and resolution wording can make apparently related questions incomparable.
 
-## Why consistency checking matters
+SignalForge separates this problem into two jobs:
 
-Market titles alone are insufficient. Different time windows, resolution sources, or event scopes can make apparently related questions incomparable. SignalForge is designed to abstain when those conditions are ambiguous.
+1. **Semantic interpretation:** an LLM examines both questions, descriptions, sources, dates, and event context.
+2. **Mathematical verification:** pure TypeScript applies the probability rule selected by the validated semantic result.
+
+The LLM never calculates or changes the verdict.
 
 ## Demo
 
-The deployed application and sub-three-minute demo video will be linked here before submission.
+The deployed dashboard includes three curated, real-market paths:
+
+| Scenario | Relationship under review | Suggested pair |
+| --- | --- | --- |
+| Timeline prerequisite | Earlier deadline implies later deadline | Putin out by Aug 31 vs Sep 30, 2026 |
+| Mutually exclusive counts | Exact outcomes cannot both occur | 0 Fed cuts vs exactly 1 Fed cut in 2026 |
+| Mutually exclusive nominees | Only one candidate can win | Kamala Harris vs Gavin Newsom for 2028 Democratic nominee |
+
+Each curated path attempts a fresh public API request first. If Polymarket is unavailable, the app uses an explicitly labelled snapshot captured on **2026-08-14 UTC**. It never presents snapshot values as live data. See [the demo scenarios](docs/DEMO_SCENARIOS.md) and [the three-minute demo script](docs/DEMO_SCRIPT.md).
+
+The final public video URL will be added to this section before hackathon submission.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
-    A[Polymarket public API] --> B[Market adapter]
-    B --> C[Normalized markets]
-    C --> D[Candidate pair]
-    D --> E[Featherless classifier]
-    E --> F[Zod validation]
-    F --> G[Deterministic engine]
-    G --> H[PASS / WARNING / ABSTAIN]
-    H --> I[Grounded explanation]
+    A[Polymarket Gamma API] --> B[Defensive adapter]
+    B --> C[Normalized event and markets]
+    C --> D[Selected market pair]
+    D --> E[Featherless semantic classifier]
+    E --> F[Strict JSON plus Zod]
+    F --> G[Deterministic constraint engine]
+    G --> H[PASS, WARNING, or ABSTAIN]
+    H --> I[Grounded Featherless explanation]
+    I --> J[SignalForge dashboard]
 ```
+
+All Featherless requests run in server-side route handlers. `FEATHERLESS_API_KEY` is never sent to the browser. The client receives a deliberately small projection of market data; full descriptions stay server-side for analysis.
+
+See [the technical overview](docs/TECHNICAL_OVERVIEW.md) for module boundaries, trust boundaries, and request flow.
 
 ## AI pipeline
 
-Featherless receives the full question, description, resolution source, time window, and event context. Its structured output is validated with Zod. Low-confidence or ambiguous classifications must abstain. The model never decides the mathematical verdict.
+The classifier receives the complete market evidence:
+
+- question and description;
+- resolution source;
+- start and end dates;
+- event title, description, source, and time window.
+
+It must return strict structured JSON with a relationship, direction, comparable-scope decision, confidence, abstention flag, and reason. Zod rejects malformed output. SignalForge then enforces its configured confidence threshold and scope checks before code applies any probability rule.
+
+A second Featherless call writes a short explanation from the already-locked deterministic result. If this optional prose pass fails, SignalForge returns a deterministic fallback explanation without changing the result.
+
+Allowed relationship types are `prerequisite`, `subset`, `mutually_exclusive`, `equivalent`, `exhaustive_pair`, `correlated_only`, `independent`, and `unknown`.
 
 ## Deterministic engine
 
-Pure TypeScript functions will validate prerequisite/subset, mutual-exclusion, equivalence, and exhaustive-pair constraints with configurable tolerances. Unit tests are a release gate.
+The engine in `src/lib/logic/` is independent of the model and exposes pure functions.
+
+| Relationship | Applied constraint |
+| --- | --- |
+| A requires B / A is a subset of B | `P(A) <= P(B)` |
+| Mutually exclusive | `P(A) + P(B) <= 1` |
+| Equivalent | `abs(P(A) - P(B)) <= tolerance` |
+| Exhaustive binary pair | `abs(P(A) + P(B) - 1) <= tolerance` |
+
+The structured result contains `status`, `rule`, `expectedConstraint`, observed values, gap, and explanation data. Unsupported, ambiguous, low-confidence, or mismatched-scope classifications return `ABSTAIN`.
 
 ## Tech stack
 
 - Next.js App Router, React, TypeScript, and Tailwind CSS
 - Zod for runtime validation
-- OpenAI-compatible SDK for Featherless.ai
+- OpenAI-compatible Node SDK for Featherless.ai
 - Vitest for unit tests
 - Public Polymarket Gamma API for market data
+- Sites production hosting with a Vercel-compatible `next build`
 
-No database, authentication, payment, wallet, or trading infrastructure is used in the MVP.
+No database, authentication, payment, wallet, or trading infrastructure is used.
+
+## Project structure
+
+```text
+app/api/analyze/          server-only analysis orchestration
+app/api/events/           normalized event endpoint
+src/lib/ai/               Featherless client, prompts, schemas
+src/lib/polymarket/       API client, defensive normalization
+src/lib/logic/            pure probability constraint engine
+src/lib/demo/             curated live paths and labelled snapshots
+src/components/           dashboard workflow
+tests/                    logic, schema, adapter, demo, render tests
+```
 
 ## Setup
 
-Prerequisites: Node.js 22.13 or newer.
+Prerequisites: Node.js 22.13 or newer and a Featherless API key.
 
 ```bash
 git clone <public-repository-url>
-cd signalforge
+cd signalforge-impact-forge
 npm ci
 cp .env.example .env.local
 npm run dev
 ```
 
-Open the local URL printed by the development server.
+Add `FEATHERLESS_API_KEY` to `.env.local`, then open the local URL printed by the development server. Polymarket market-data requests require no wallet and no API key.
 
 ## Environment variables
 
@@ -75,13 +125,22 @@ Open the local URL printed by the development server.
 | `FEATHERLESS_API_KEY` | Yes for AI analysis | — | Server-only Featherless credential |
 | `FEATHERLESS_MODEL` | No | `zai-org/GLM-5.2` | OpenAI-compatible model ID |
 | `SIGNALFORGE_CONFIDENCE_THRESHOLD` | No | `0.75` | Minimum confidence before abstaining |
-| `SIGNALFORGE_PROBABILITY_TOLERANCE` | No | `0.03` | Default probability-rule tolerance |
+| `SIGNALFORGE_PROBABILITY_TOLERANCE` | No | `0.03` | Probability-rule tolerance |
 
 Never expose `FEATHERLESS_API_KEY` through a `NEXT_PUBLIC_` variable or commit `.env.local`.
 
 ## Error handling
 
-The completed vertical slice will include timeouts, one bounded retry where appropriate, explicit handling for upstream authentication/rate-limit/server errors, malformed model output, Zod failures, and recoverable UI states.
+| Failure | Behavior |
+| --- | --- |
+| Polymarket timeout or error | Preserve the dashboard; curated paths fall back to labelled snapshots |
+| Featherless 401 | Friendly non-retryable configuration error |
+| Featherless 429 / 5xx / timeout | One bounded SDK retry, then a retryable UI error |
+| Invalid JSON or schema mismatch | Reject the classification; do not run the math engine |
+| Low confidence or incompatible scope | Return `ABSTAIN` |
+| Explanation call failure | Keep the locked verdict and use deterministic prose |
+
+External failures never produce fabricated classifications or successful-looking live data.
 
 ## Testing
 
@@ -89,14 +148,27 @@ The completed vertical slice will include timeouts, one bounded retry where appr
 npm test
 npm run lint
 npm run build
+npm run vercel-build
+npm run test:rendered
+npm audit --omit=dev --audit-level=high
 ```
+
+The current suite covers all four deterministic rules, pass/warning/abstain behavior, invalid inputs, model JSON/schema handling, defensive Polymarket normalization, curated snapshot integrity, and rendered output. A live Polymarket integration test is opt-in:
+
+```bash
+RUN_LIVE_TESTS=1 npm test -- tests/polymarket.live.integration.test.ts
+```
+
+GitHub Actions runs tests, lint, and the Vercel-compatible build on pushes and pull requests.
 
 ## Limitations
 
-- Semantic classifications can be wrong or incomplete.
+- Semantic classifications can be wrong or incomplete; confidence is evidence, not certainty.
 - Similar wording does not guarantee matching resolution scope.
-- Public market prices can change between fetch and display.
-- Warnings are analytical inconsistencies, not arbitrage claims.
+- Public probabilities can change between fetch, display, and analysis.
+- Pairwise constraints do not prove global consistency across an event.
+- Snapshot mode demonstrates reliability but is not current market data.
+- Warnings are analytical inconsistencies, not arbitrage or trading signals.
 
 ## Disclaimer
 
@@ -104,14 +176,22 @@ SignalForge provides analytical signals for research and education. It does not 
 
 ## Data and API citations
 
-- [Polymarket Gamma API](https://docs.polymarket.com/developers/gamma-markets-api/overview)
-- [Featherless.ai documentation](https://featherless.ai/docs)
-- [OpenAI Node SDK](https://github.com/openai/openai-node)
+- [Polymarket: Discover Markets](https://docs.polymarket.com/market-data/discover-markets) — Gamma event discovery and event-by-slug guidance
+- [Polymarket API changelog](https://docs.polymarket.com/changelog/predictions) — current keyset pagination direction
+- [Featherless quickstart](https://featherless.ai/docs/quickstart-guide) — OpenAI-compatible API setup and base URL
+- [Featherless model API](https://featherless.ai/docs/api-reference-models) — available model metadata
+- [OpenAI Node SDK](https://github.com/openai/openai-node) — compatible server-side client
+- [Zod](https://zod.dev/) — runtime schema validation
+- [Next.js](https://nextjs.org/docs/app) and [Vitest](https://vitest.dev/) — application and test frameworks
+
+Market questions, resolution descriptions, probabilities, liquidity, and volume are attributed to the public Polymarket Gamma API. Curated snapshots record the retrieval date in the UI and source.
 
 ## Hackathon disclosure
 
-Core development was completed during Impact Forge Summer 2026. Open-source frameworks, libraries, and public APIs are identified above and in `package.json`.
+**Core development was completed during Impact Forge Summer 2026.**
+
+SignalForge was built as a solo hackathon project. Open-source libraries, frameworks, and public APIs are identified above and in `package.json`. No prebuilt proprietary SignalForge codebase was used.
 
 ## License
 
-License selection will be finalized before the public submission repository is opened.
+[MIT](LICENSE)
