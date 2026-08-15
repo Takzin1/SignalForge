@@ -1,9 +1,9 @@
 export {
   classifyRelationship,
   explainAnalysis,
-  featherlessModel,
-  FeatherlessServiceError,
-} from "./featherless";
+  geminiModel,
+  GeminiServiceError,
+} from "./gemini";
 export {
   enforceSemanticAbstention,
   groundedExplanationSchema,

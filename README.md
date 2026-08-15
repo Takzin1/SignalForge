@@ -4,7 +4,7 @@
 
 ## Overview
 
-SignalForge is an AI-powered logical consistency engine for prediction markets. It discovers related public Polymarket markets, uses Featherless to interpret their full resolution conditions, and applies deterministic TypeScript rules to verify the corresponding probability constraint.
+SignalForge is an AI-powered logical consistency engine for prediction markets. It discovers related public Polymarket markets, uses Gemini to interpret their full resolution conditions, and applies deterministic TypeScript rules to verify the corresponding probability constraint.
 
 [Open the live application](https://signalforge-impact-forge.taka0101ty.chatgpt.site)
 
@@ -46,15 +46,15 @@ flowchart TD
     C --> D[Selected market pair]
     A -. upstream unavailable .-> S[Labelled snapshot fallback]
     S --> D
-    D --> E[Featherless semantic classifier]
+    D --> E[Gemini semantic classifier]
     E --> F[Structured JSON plus Zod]
     F --> G[Deterministic constraint engine]
     G --> H[PASS, WARNING, or ABSTAIN]
-    H --> I[Grounded Featherless explanation]
+    H --> I[Grounded Gemini explanation]
     I --> J[SignalForge dashboard]
 ```
 
-All Featherless requests run in server-side route handlers. `FEATHERLESS_API_KEY` is never sent to the browser. The client receives a deliberately small projection of market data; full descriptions stay server-side for analysis.
+All Gemini requests run in server-side route handlers. `GEMINI_API_KEY` is never sent to the browser. The client receives a deliberately small projection of market data; full descriptions stay server-side for analysis.
 
 See [the technical overview](docs/TECHNICAL_OVERVIEW.md) for module boundaries, trust boundaries, and request flow.
 
@@ -73,7 +73,7 @@ The classifier receives the complete market evidence:
 
 It must return strict structured JSON with a relationship, direction, comparable-scope decision, confidence, abstention flag, and reason. Zod rejects malformed output. SignalForge then enforces its configured confidence threshold and scope checks before code applies any probability rule.
 
-A second Featherless call writes a short explanation from the already-locked deterministic result. If this optional prose pass fails, SignalForge returns a deterministic fallback explanation without changing the result.
+A second Gemini call writes a short explanation from the already-locked deterministic result. If this optional prose pass fails, SignalForge returns a deterministic fallback explanation without changing the result.
 
 Allowed relationship types are `prerequisite`, `subset`, `mutually_exclusive`, `equivalent`, `exhaustive_pair`, `correlated_only`, `independent`, and `unknown`.
 
@@ -94,7 +94,7 @@ The structured result contains `status`, `rule`, `expectedConstraint`, observed 
 
 - Next.js App Router, React, TypeScript, and Tailwind CSS
 - Zod for runtime validation
-- OpenAI-compatible Node SDK for Featherless.ai
+- OpenAI-compatible Node SDK for the Gemini Developer API
 - Vitest for unit tests
 - Public Polymarket Gamma API for market data
 - Sites production hosting with a Vercel-compatible `next build`
@@ -106,7 +106,7 @@ No database, authentication, payment, wallet, or trading infrastructure is used.
 ```text
 app/api/analyze/          server-only analysis orchestration
 app/api/events/           normalized event endpoint
-src/lib/ai/               Featherless client, prompts, schemas
+src/lib/ai/               Gemini client, prompts, schemas
 src/lib/polymarket/       API client, defensive normalization
 src/lib/logic/            pure probability constraint engine
 src/lib/demo/             curated live paths and labelled snapshots
@@ -116,7 +116,7 @@ tests/                    logic, schema, adapter, demo, render tests
 
 ## Setup
 
-Prerequisites: Node.js 22.13 or newer and a Featherless API key.
+Prerequisites: Node.js 22.13 or newer and a Gemini API key from Google AI Studio.
 
 ```bash
 git clone https://github.com/Takzin1/SignalForge.git
@@ -126,26 +126,26 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Add `FEATHERLESS_API_KEY` to `.env.local`, then open the local URL printed by the development server. Polymarket market-data requests require no wallet and no API key.
+Add `GEMINI_API_KEY` to `.env.local`, then open the local URL printed by the development server. Polymarket market-data requests require no wallet and no API key.
 
 ## Environment variables
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `FEATHERLESS_API_KEY` | Yes for AI analysis | — | Server-only Featherless credential |
-| `FEATHERLESS_MODEL` | No | `zai-org/GLM-5.2` | OpenAI-compatible model ID |
+| `GEMINI_API_KEY` | Yes for AI analysis | — | Server-only Gemini credential |
+| `GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model ID; the default has a free tier |
 | `SIGNALFORGE_CONFIDENCE_THRESHOLD` | No | `0.75` | Minimum confidence before abstaining |
 | `SIGNALFORGE_PROBABILITY_TOLERANCE` | No | `0.03` | Probability-rule tolerance |
 
-Never expose `FEATHERLESS_API_KEY` through a `NEXT_PUBLIC_` variable or commit `.env.local`.
+Never expose `GEMINI_API_KEY` through a `NEXT_PUBLIC_` variable or commit `.env.local`.
 
 ## Error handling
 
 | Failure | Behavior |
 | --- | --- |
 | Polymarket timeout or error | Preserve the dashboard; curated paths fall back to labelled snapshots |
-| Featherless 401 | Friendly non-retryable configuration error |
-| Featherless 429 / 5xx / timeout | One bounded SDK retry, then a retryable UI error |
+| Gemini invalid credential / 401 / 403 | Friendly non-retryable configuration error |
+| Gemini 429 / 5xx / timeout | One bounded SDK retry, then a retryable UI error |
 | Invalid JSON or schema mismatch | Reject the classification; do not run the math engine |
 | Low confidence or incompatible scope | Return `ABSTAIN` |
 | Explanation call failure | Keep the locked verdict and use deterministic prose |
@@ -188,8 +188,9 @@ SignalForge provides analytical signals for research and education. It does not 
 
 - [Polymarket: Discover Markets](https://docs.polymarket.com/market-data/discover-markets) — Gamma event discovery and event-by-slug guidance
 - [Polymarket API changelog](https://docs.polymarket.com/changelog/predictions) — current keyset pagination direction
-- [Featherless quickstart](https://featherless.ai/docs/quickstart-guide) — OpenAI-compatible API setup and base URL
-- [Featherless model API](https://featherless.ai/docs/api-reference-models) — available model metadata
+- [Gemini OpenAI compatibility](https://ai.google.dev/gemini-api/docs/openai) — official Node SDK endpoint and structured-output pattern
+- [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing) — free-tier availability for the default model
+- [Gemini API keys](https://ai.google.dev/gemini-api/docs/api-key) — key creation and server-side credential guidance
 - [OpenAI Node SDK](https://github.com/openai/openai-node) — compatible server-side client
 - [Zod](https://zod.dev/) — runtime schema validation
 - [Next.js](https://nextjs.org/docs/app) and [Vitest](https://vitest.dev/) — application and test frameworks

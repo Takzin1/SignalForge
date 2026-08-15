@@ -3,8 +3,8 @@ import { z } from "zod";
 import {
   classifyRelationship,
   explainAnalysis,
-  featherlessModel,
-  FeatherlessServiceError,
+  geminiModel,
+  GeminiServiceError,
 } from "@/src/lib/ai";
 import type {
   AnalysisErrorResponse,
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
       constraint.expectedConstraint,
       constraint.gap,
     );
-    let explanationSource: "featherless" | "deterministic_fallback" =
+    let explanationSource: "gemini" | "deterministic_fallback" =
       "deterministic_fallback";
 
     try {
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
         relationship,
         constraint,
       });
-      explanationSource = "featherless";
+      explanationSource = "gemini";
     } catch {
       // The deterministic result remains useful if the optional prose pass fails.
     }
@@ -170,7 +170,7 @@ export async function POST(request: Request) {
     const response: AnalysisSuccessResponse = {
       ok: true,
       analysis: {
-        model: featherlessModel(),
+        model: geminiModel(),
         dataSource: parsedRequest.data.dataSource,
         capturedAt:
           parsedRequest.data.dataSource === "snapshot"
@@ -198,7 +198,7 @@ export async function POST(request: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
-    if (error instanceof FeatherlessServiceError) {
+    if (error instanceof GeminiServiceError) {
       const status =
         error.code === "rate_limited"
           ? 429

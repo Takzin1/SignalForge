@@ -1,20 +1,22 @@
 import "server-only";
 
 import OpenAI from "openai";
+import { zodResponseFormat } from "openai/helpers/zod";
 
 import type { ConstraintResult, SemanticRelationship } from "../logic";
 import type { Market, PredictionEvent } from "../polymarket/types";
 import {
   enforceSemanticAbstention,
-  parseGroundedExplanation,
-  parseRelationshipClassification,
+  groundedExplanationSchema,
+  relationshipClassificationSchema,
 } from "./schema";
 
-const FEATHERLESS_BASE_URL = "https://api.featherless.ai/v1";
-const DEFAULT_MODEL = "zai-org/GLM-5.2";
+const GEMINI_BASE_URL =
+  "https://generativelanguage.googleapis.com/v1beta/openai/";
+const DEFAULT_MODEL = "gemini-2.5-flash";
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.75;
 
-export type FeatherlessErrorCode =
+export type GeminiErrorCode =
   | "missing_key"
   | "unauthorized"
   | "rate_limited"
@@ -23,16 +25,16 @@ export type FeatherlessErrorCode =
   | "invalid_response"
   | "unknown";
 
-export class FeatherlessServiceError extends Error {
+export class GeminiServiceError extends Error {
   constructor(
     message: string,
-    public readonly code: FeatherlessErrorCode,
+    public readonly code: GeminiErrorCode,
     public readonly retryable: boolean,
     public readonly status?: number,
     options?: ErrorOptions,
   ) {
     super(message, options);
-    this.name = "FeatherlessServiceError";
+    this.name = "GeminiServiceError";
   }
 }
 
@@ -44,10 +46,10 @@ function confidenceThreshold(): number {
 }
 
 function getApiKey(): string {
-  const apiKey = process.env.FEATHERLESS_API_KEY?.trim();
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
-    throw new FeatherlessServiceError(
-      "Featherless analysis is not configured.",
+    throw new GeminiServiceError(
+      "Gemini analysis is not configured.",
       "missing_key",
       false,
     );
@@ -67,15 +69,23 @@ function statusFromError(error: unknown): number | undefined {
   return undefined;
 }
 
-function mapSdkError(error: unknown): FeatherlessServiceError {
-  if (error instanceof FeatherlessServiceError) {
+function mapSdkError(error: unknown): GeminiServiceError {
+  if (error instanceof GeminiServiceError) {
     return error;
   }
 
   const status = statusFromError(error);
-  if (status === 401 || status === 403) {
-    return new FeatherlessServiceError(
-      "Featherless rejected the server credential.",
+  const errorMessage =
+    error instanceof Error ? error.message.toLowerCase() : "";
+  if (
+    status === 401 ||
+    status === 403 ||
+    (status === 400 &&
+      (errorMessage.includes("api key") ||
+        errorMessage.includes("api_key_invalid")))
+  ) {
+    return new GeminiServiceError(
+      "Gemini rejected the server credential.",
       "unauthorized",
       false,
       status,
@@ -83,8 +93,8 @@ function mapSdkError(error: unknown): FeatherlessServiceError {
     );
   }
   if (status === 429) {
-    return new FeatherlessServiceError(
-      "Featherless is rate limited. Try again shortly.",
+    return new GeminiServiceError(
+      "Gemini is rate limited. Try again shortly.",
       "rate_limited",
       true,
       status,
@@ -92,8 +102,8 @@ function mapSdkError(error: unknown): FeatherlessServiceError {
     );
   }
   if (status !== undefined && status >= 500) {
-    return new FeatherlessServiceError(
-      "Featherless is temporarily unavailable.",
+    return new GeminiServiceError(
+      "Gemini is temporarily unavailable.",
       "upstream",
       true,
       status,
@@ -106,8 +116,8 @@ function mapSdkError(error: unknown): FeatherlessServiceError {
       error.name === "AbortError" ||
       error.message.toLowerCase().includes("timeout"))
   ) {
-    return new FeatherlessServiceError(
-      "Featherless did not respond in time.",
+    return new GeminiServiceError(
+      "Gemini did not respond in time.",
       "timeout",
       true,
       status,
@@ -115,8 +125,8 @@ function mapSdkError(error: unknown): FeatherlessServiceError {
     );
   }
 
-  return new FeatherlessServiceError(
-    "Featherless analysis failed.",
+  return new GeminiServiceError(
+    "Gemini analysis failed.",
     "unknown",
     true,
     status,
@@ -184,54 +194,43 @@ export async function classifyRelationship(
 ): Promise<SemanticRelationship> {
   const client = new OpenAI({
     apiKey: getApiKey(),
-    baseURL: FEATHERLESS_BASE_URL,
+    baseURL: GEMINI_BASE_URL,
     timeout: 15_000,
     maxRetries: 1,
   });
 
   try {
-    const response = await client.chat.completions.create({
-      model: process.env.FEATHERLESS_MODEL?.trim() || DEFAULT_MODEL,
+    const response = await client.chat.completions.parse({
+      model: geminiModel(),
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: classifierPrompt(marketA, marketB, event) },
       ],
       temperature: 0.1,
       max_tokens: 450,
-      response_format: { type: "json_object" },
+      response_format: zodResponseFormat(
+        relationshipClassificationSchema,
+        "relationship_classification",
+      ),
     });
-    const content = response.choices[0]?.message?.content;
+    const classification = response.choices[0]?.message?.parsed;
 
-    if (!content) {
-      throw new FeatherlessServiceError(
-        "Featherless returned an empty response.",
+    if (!classification) {
+      throw new GeminiServiceError(
+        "Gemini returned an empty or invalid structured response.",
         "invalid_response",
         true,
       );
     }
 
-    try {
-      const classification = parseRelationshipClassification(content);
-      return enforceSemanticAbstention(
-        classification,
-        confidenceThreshold(),
-      );
-    } catch (error) {
-      throw new FeatherlessServiceError(
-        "Featherless returned an invalid structured response.",
-        "invalid_response",
-        true,
-        undefined,
-        { cause: error },
-      );
-    }
+    return enforceSemanticAbstention(classification, confidenceThreshold());
   } catch (error) {
     throw mapSdkError(error);
   }
 }
 
-export function featherlessModel(): string {
-  return process.env.FEATHERLESS_MODEL?.trim() || DEFAULT_MODEL;
+export function geminiModel(): string {
+  return process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
 }
 
 export async function explainAnalysis(input: {
@@ -242,7 +241,7 @@ export async function explainAnalysis(input: {
 }): Promise<string> {
   const client = new OpenAI({
     apiKey: getApiKey(),
-    baseURL: FEATHERLESS_BASE_URL,
+    baseURL: GEMINI_BASE_URL,
     timeout: 12_000,
     maxRetries: 1,
   });
@@ -255,8 +254,8 @@ export async function explainAnalysis(input: {
   };
 
   try {
-    const response = await client.chat.completions.create({
-      model: featherlessModel(),
+    const response = await client.chat.completions.parse({
+      model: geminiModel(),
       messages: [
         {
           role: "system",
@@ -267,19 +266,22 @@ export async function explainAnalysis(input: {
       ],
       temperature: 0.2,
       max_tokens: 220,
-      response_format: { type: "json_object" },
+      response_format: zodResponseFormat(
+        groundedExplanationSchema,
+        "grounded_explanation",
+      ),
     });
-    const content = response.choices[0]?.message?.content;
+    const explanation = response.choices[0]?.message?.parsed;
 
-    if (!content) {
-      throw new FeatherlessServiceError(
-        "Featherless returned an empty explanation.",
+    if (!explanation) {
+      throw new GeminiServiceError(
+        "Gemini returned an empty or invalid explanation.",
         "invalid_response",
         true,
       );
     }
 
-    return parseGroundedExplanation(content);
+    return explanation.summary;
   } catch (error) {
     throw mapSdkError(error);
   }

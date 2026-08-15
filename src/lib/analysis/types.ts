@@ -13,7 +13,7 @@ export type AnalysisResult = {
   relationship: SemanticRelationship;
   constraint: ConstraintResult;
   explanation: string;
-  explanationSource: "featherless" | "deterministic_fallback";
+  explanationSource: "gemini" | "deterministic_fallback";
   marketA: AnalyzedMarket;
   marketB: AnalyzedMarket;
   analyzedAt: string;

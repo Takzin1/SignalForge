@@ -38,7 +38,7 @@ This demonstrates the same mathematical rule applied to a different semantic dom
 
 - Probabilities are intentionally not described as guaranteed demo outcomes because live values change.
 - The model may abstain if it finds ambiguous scope. That is a valid safety result, not an application failure.
-- Snapshot mode protects the market-data part of the demo, not the Featherless dependency.
+- Snapshot mode protects the market-data part of the demo, not the Gemini dependency.
 - Recovery order for recording is **Primary → Backup → labelled snapshot**.
-- If Featherless is unavailable, show the friendly preserved-selection error, then use the architecture and passing deterministic tests to explain the boundary.
+- If Gemini is unavailable, show the friendly preserved-selection error, then use the architecture and passing deterministic tests to explain the boundary.
 - Never describe a warning as an arbitrage opportunity or trading signal.

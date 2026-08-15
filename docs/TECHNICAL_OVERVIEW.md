@@ -14,19 +14,19 @@ sequenceDiagram
     participant UI as Dashboard
     participant API as Analyze route
     participant PM as Polymarket adapter
-    participant FL as Featherless
+    participant AI as Gemini
     participant Math as Constraint engine
     User->>UI: Select event and two markets
     UI->>API: IDs, slug, source
     API->>PM: Refetch server-side evidence
     PM-->>API: Normalized event
-    API->>FL: Full resolution context
-    FL-->>API: Structured relationship JSON
+    API->>AI: Full resolution context
+    AI-->>API: Structured relationship JSON
     API->>API: Zod validation and abstention policy
     API->>Math: Relationship plus probabilities
     Math-->>API: Locked verdict and gap
-    API->>FL: Result-grounded explanation request
-    FL-->>API: Explanation only
+    API->>AI: Result-grounded explanation request
+    AI-->>API: Explanation only
     API-->>UI: Interpretation, math, verdict, explanation
 ```
 
@@ -37,7 +37,7 @@ The route refetches selected live markets server-side rather than trusting proba
 | Module | Responsibility | Explicitly does not do |
 | --- | --- | --- |
 | `src/lib/polymarket/` | Fetch, time out, parse, normalize, and project public market data | Authentication, wallet access, order placement |
-| `src/lib/ai/` | Construct grounded prompts, call Featherless, validate strict JSON, map errors | Decide probability verdicts |
+| `src/lib/ai/` | Construct grounded prompts, call Gemini, validate strict JSON, map errors | Decide probability verdicts |
 | `src/lib/logic/` | Apply pure probability rules and safety gates | Call APIs or parse natural language |
 | `src/lib/demo/` | Define curated slugs, preferred pairs, and labelled captures | Pretend captures are live |
 | `app/api/analyze/` | Orchestrate the end-to-end server workflow | Expose API keys |
@@ -78,12 +78,12 @@ Invalid probabilities, ambiguous direction, low confidence, scope mismatch, clas
 | --- | --- |
 | Browser → API | Strict request schema; selected IDs must differ |
 | Gamma API → adapter | Defensive Zod envelope parsing; malformed markets are dropped |
-| Model → application | JSON-only request, fence-tolerant extraction, strict Zod validation |
+| Model → application | JSON Schema-constrained response and strict Zod validation |
 | Semantic result → math | Confidence, scope, direction, and relationship gates |
 | Verdict → explanation model | Immutable computed result supplied in the prompt; response schema contains prose only |
 | Credential → browser | Key read only through server environment variables |
 
-Polymarket requests use an eight-second abort timeout. The Featherless SDK is configured for one bounded retry and maps 401, 429, 5xx, timeouts, invalid JSON, and invalid schemas to user-safe responses.
+Polymarket requests use an eight-second abort timeout. The OpenAI-compatible Gemini client is configured for one bounded retry and maps invalid credentials, 429, 5xx, timeouts, and invalid schemas to user-safe responses.
 
 ## Runtime and deployment
 
@@ -103,4 +103,4 @@ The suite prioritizes the most damaging failure modes:
 4. broken curated fallback data;
 5. application render regressions.
 
-The live Gamma integration test is opt-in so CI remains deterministic. Featherless success-path verification requires a real server-side key and is intentionally never faked.
+The live Gamma integration test is opt-in so CI remains deterministic. Gemini success-path verification requires a real server-side key and is intentionally never faked.

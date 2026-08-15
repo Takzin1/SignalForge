@@ -492,7 +492,7 @@ export function AnalysisDashboard({
             {event.title}
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-6 text-[#91a39a]">
-            Select two propositions. Featherless interprets the resolution
+            Select two propositions. Gemini interprets the resolution
             relationship; deterministic TypeScript verifies the probability
             rule.
           </p>

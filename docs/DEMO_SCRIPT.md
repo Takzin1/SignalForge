@@ -24,7 +24,7 @@ When the result appears, show the verdict without promising a particular live va
 
 ## 1:25–1:55 — AI semantic classification
 
-> Featherless receives both full market descriptions, resolution sources, time windows, and event context—not just their titles. It returns strict JSON containing the relationship, direction, comparable-scope decision, confidence, abstention flag, and reason. Zod validates that contract. Low confidence or mismatched scope forces ABSTAIN.
+> Gemini receives both full market descriptions, resolution sources, time windows, and event context—not just their titles. It returns strict JSON containing the relationship, direction, comparable-scope decision, confidence, abstention flag, and reason. Zod validates that contract. Low confidence or mismatched scope forces ABSTAIN.
 
 Point to **AI interpretation**, the confidence bar, direction, and comparable scope.
 
@@ -32,13 +32,13 @@ Point to **AI interpretation**, the confidence bar, direction, and comparable sc
 
 > The LLM never decides whether this constraint passes or fails. A pure TypeScript engine applies the rule P of A plus P of B must be no greater than one, then returns PASS, WARNING, or ABSTAIN with the observed values and exact gap.
 
-Point to **Mathematical check**, P(A), P(B), constraint gap, and the verdict. Then point to **Verdict locked by TypeScript**: a second Featherless pass explains the computed result but cannot alter it.
+Point to **Mathematical check**, P(A), P(B), constraint gap, and the verdict. Then point to **Verdict locked by TypeScript**: a second Gemini pass explains the computed result but cannot alter it.
 
 ## 2:20–2:40 — Architecture and safeguards
 
 Show the README architecture diagram.
 
-> Raw Gamma responses are isolated behind a defensive adapter. Featherless stays server-side. Structured output crosses a Zod boundary before the math engine. Curated events fall back to an explicitly labelled snapshot, never fake live data.
+> Raw Gamma responses are isolated behind a defensive adapter. Gemini stays server-side. Structured output crosses a Zod boundary before the math engine. Curated events fall back to an explicitly labelled snapshot, never fake live data.
 
 ## 2:40–2:55 — Reliability and solo execution
 
