@@ -6,7 +6,7 @@
 
 SignalForge is an AI-powered logical consistency engine for prediction markets. It discovers related public Polymarket markets, uses Gemini to interpret their full resolution conditions, and applies deterministic TypeScript rules to verify the corresponding probability constraint.
 
-[Open the live application](https://signalforge-impact-forge.taka0101ty.chatgpt.site) · [Watch the 2:54 demo video](https://www.youtube.com/watch?v=BHG3uLimvwU)
+[Open the primary live application](https://signalforge-impact-forge.taka0101ty.chatgpt.site) · [Vercel backup](https://signalforge-lilac.vercel.app) · [Watch the 2:54 demo video](https://www.youtube.com/watch?v=BHG3uLimvwU)
 
 ![SignalForge dashboard showing a live Polymarket event and the curated analysis workflow](docs/assets/signalforge-dashboard.jpg)
 
