@@ -83,6 +83,10 @@ function getApiKey(): string {
   return apiKey;
 }
 
+function reasoningEffort(model: string): "none" | "low" {
+  return model.startsWith("gemini-2.5") ? "none" : "low";
+}
+
 function statusFromError(error: unknown): number | undefined {
   if (
     typeof error === "object" &&
@@ -262,9 +266,7 @@ export async function classifyRelationship(
       ],
       temperature: 0.1,
       max_tokens: 1_000,
-      ...(model.startsWith("gemini-2.5")
-        ? { reasoning_effort: "none" as const }
-        : {}),
+      reasoning_effort: reasoningEffort(model),
       response_format: zodResponseFormat(
         providerRelationshipSchema,
         "relationship_classification",
@@ -334,10 +336,8 @@ export async function explainAnalysis(input: {
         { role: "user", content: JSON.stringify(payload) },
       ],
       temperature: 0.2,
-      max_tokens: 500,
-      ...(model.startsWith("gemini-2.5")
-        ? { reasoning_effort: "none" as const }
-        : {}),
+      max_tokens: 1_500,
+      reasoning_effort: reasoningEffort(model),
       response_format: zodResponseFormat(
         providerExplanationSchema,
         "grounded_explanation",
