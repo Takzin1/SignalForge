@@ -8,6 +8,8 @@ SignalForge is an AI-powered logical consistency engine for prediction markets. 
 
 [Open the live application](https://signalforge-impact-forge.taka0101ty.chatgpt.site)
 
+![SignalForge dashboard showing a live Polymarket event and the curated analysis workflow](docs/assets/signalforge-dashboard.jpg)
+
 SignalForge is an analytical research tool. It is not a betting app, trading bot, wallet, order-execution client, arbitrage executor, or source of financial advice.
 
 ## Problem
@@ -36,6 +38,26 @@ The deployed dashboard includes three curated, real-market paths:
 Each curated path attempts a fresh public API request first. If Polymarket is unavailable, the app uses an explicitly labelled snapshot captured on **2026-08-14 UTC**. It never presents snapshot values as live data. See [the demo scenarios](docs/DEMO_SCENARIOS.md) and [the three-minute demo script](docs/DEMO_SCRIPT.md).
 
 The final public video URL will be added to this section before hackathon submission.
+
+Verified production response shape (live values change):
+
+```json
+{
+  "model": "gemini-3.6-flash",
+  "dataSource": "live",
+  "relationship": {
+    "relationship": "mutually_exclusive",
+    "confidence": 0.95,
+    "abstain": false
+  },
+  "constraint": {
+    "status": "pass",
+    "expectedConstraint": "P(A) + P(B) ≤ 1",
+    "gap": -0.0525
+  },
+  "explanationSource": "gemini"
+}
+```
 
 ## Architecture
 
@@ -163,7 +185,7 @@ npm run test:rendered
 npm audit --omit=dev --audit-level=high
 ```
 
-The current suite covers all four deterministic rules, pass/warning/abstain behavior, invalid inputs, model JSON/schema handling, defensive Polymarket normalization, curated snapshot integrity, and rendered output. A live Polymarket integration test is opt-in:
+The current suite covers all four deterministic rules, pass/warning/abstain behavior, invalid inputs, model JSON/schema handling, route-level 401/429/5xx/timeout mapping, explanation fallback, defensive Polymarket normalization, curated snapshot integrity, and rendered output. A live Polymarket integration test is opt-in:
 
 ```bash
 RUN_LIVE_TESTS=1 npm test -- tests/polymarket.live.integration.test.ts
