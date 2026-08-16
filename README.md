@@ -6,7 +6,7 @@
 
 SignalForge is an AI-powered logical consistency engine for prediction markets. It discovers related public Polymarket markets, uses Gemini to interpret their full resolution conditions, and applies deterministic TypeScript rules to verify the corresponding probability constraint.
 
-[Open the live application](https://signalforge-impact-forge.taka0101ty.chatgpt.site)
+[Open the live application](https://signalforge-impact-forge.taka0101ty.chatgpt.site) · [Watch the 2:54 demo video](https://www.youtube.com/watch?v=BHG3uLimvwU)
 
 ![SignalForge dashboard showing a live Polymarket event and the curated analysis workflow](docs/assets/signalforge-dashboard.jpg)
 
@@ -37,7 +37,7 @@ The deployed dashboard includes three curated, real-market paths:
 
 Each curated path attempts a fresh public API request first. If Polymarket is unavailable, the app uses an explicitly labelled snapshot captured on **2026-08-14 UTC**. It never presents snapshot values as live data. See [the demo scenarios](docs/DEMO_SCENARIOS.md) and [the three-minute demo script](docs/DEMO_SCRIPT.md).
 
-The final public video URL will be added to this section before hackathon submission.
+Watch the final 2:54 demo: [SignalForge — AI + Mathematical Verification for Prediction Markets](https://www.youtube.com/watch?v=BHG3uLimvwU).
 
 Verified production response shape (live values change):
 
