@@ -19,7 +19,7 @@ import {
 
 const GEMINI_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai/";
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.6-flash";
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.75;
 
 // Gemini accepts a subset of JSON Schema. Keep provider schemas transport-safe,

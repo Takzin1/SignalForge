@@ -133,7 +133,7 @@ Add `GEMINI_API_KEY` to `.env.local`, then open the local URL printed by the dev
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
 | `GEMINI_API_KEY` | Yes for AI analysis | — | Server-only Gemini credential |
-| `GEMINI_MODEL` | No | `gemini-2.5-flash` | Gemini model ID; the default has a free tier |
+| `GEMINI_MODEL` | No | `gemini-3.6-flash` | Gemini model ID; the default has a free tier |
 | `SIGNALFORGE_CONFIDENCE_THRESHOLD` | No | `0.75` | Minimum confidence before abstaining |
 | `SIGNALFORGE_PROBABILITY_TOLERANCE` | No | `0.03` | Probability-rule tolerance |
 
