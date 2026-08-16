@@ -2,8 +2,14 @@ import "server-only";
 
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
+import { z } from "zod";
 
-import type { ConstraintResult, SemanticRelationship } from "../logic";
+import {
+  RELATIONSHIP_DIRECTIONS,
+  RELATIONSHIP_TYPES,
+  type ConstraintResult,
+  type SemanticRelationship,
+} from "../logic";
 import type { Market, PredictionEvent } from "../polymarket/types";
 import {
   enforceSemanticAbstention,
@@ -15,6 +21,26 @@ const GEMINI_BASE_URL =
   "https://generativelanguage.googleapis.com/v1beta/openai/";
 const DEFAULT_MODEL = "gemini-2.5-flash";
 const DEFAULT_CONFIDENCE_THRESHOLD = 0.75;
+
+// Gemini accepts a subset of JSON Schema. Keep provider schemas transport-safe,
+// then apply the stricter application schemas after the response crosses the
+// model boundary.
+const providerRelationshipSchema = z
+  .object({
+    relationship: z.enum(RELATIONSHIP_TYPES),
+    direction: z.enum(RELATIONSHIP_DIRECTIONS),
+    same_resolution_scope: z.boolean(),
+    confidence: z.number().min(0).max(1),
+    abstain: z.boolean(),
+    reason: z.string(),
+  })
+  .strict();
+
+const providerExplanationSchema = z
+  .object({
+    summary: z.string(),
+  })
+  .strict();
 
 export type GeminiErrorCode =
   | "missing_key"
@@ -101,6 +127,24 @@ function mapSdkError(error: unknown): GeminiServiceError {
       { cause: error },
     );
   }
+  if (status === 400) {
+    return new GeminiServiceError(
+      "Gemini rejected the structured request.",
+      "invalid_response",
+      false,
+      status,
+      { cause: error },
+    );
+  }
+  if (status === 404) {
+    return new GeminiServiceError(
+      "The configured Gemini model is unavailable.",
+      "upstream",
+      false,
+      status,
+      { cause: error },
+    );
+  }
   if (status !== undefined && status >= 500) {
     return new GeminiServiceError(
       "Gemini is temporarily unavailable.",
@@ -119,6 +163,15 @@ function mapSdkError(error: unknown): GeminiServiceError {
     return new GeminiServiceError(
       "Gemini did not respond in time.",
       "timeout",
+      true,
+      status,
+      { cause: error },
+    );
+  }
+  if (error instanceof Error && error.name === "APIConnectionError") {
+    return new GeminiServiceError(
+      "Gemini could not be reached from the server.",
+      "upstream",
       true,
       status,
       { cause: error },
@@ -200,16 +253,20 @@ export async function classifyRelationship(
   });
 
   try {
+    const model = geminiModel();
     const response = await client.chat.completions.parse({
-      model: geminiModel(),
+      model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: classifierPrompt(marketA, marketB, event) },
       ],
       temperature: 0.1,
-      max_tokens: 450,
+      max_tokens: 1_000,
+      ...(model.startsWith("gemini-2.5")
+        ? { reasoning_effort: "none" as const }
+        : {}),
       response_format: zodResponseFormat(
-        relationshipClassificationSchema,
+        providerRelationshipSchema,
         "relationship_classification",
       ),
     });
@@ -223,7 +280,18 @@ export async function classifyRelationship(
       );
     }
 
-    return enforceSemanticAbstention(classification, confidenceThreshold());
+    const validated = relationshipClassificationSchema.safeParse(classification);
+    if (!validated.success) {
+      throw new GeminiServiceError(
+        "Gemini returned an invalid structured response.",
+        "invalid_response",
+        true,
+        undefined,
+        { cause: validated.error },
+      );
+    }
+
+    return enforceSemanticAbstention(validated.data, confidenceThreshold());
   } catch (error) {
     throw mapSdkError(error);
   }
@@ -254,8 +322,9 @@ export async function explainAnalysis(input: {
   };
 
   try {
+    const model = geminiModel();
     const response = await client.chat.completions.parse({
-      model: geminiModel(),
+      model,
       messages: [
         {
           role: "system",
@@ -265,9 +334,12 @@ export async function explainAnalysis(input: {
         { role: "user", content: JSON.stringify(payload) },
       ],
       temperature: 0.2,
-      max_tokens: 220,
+      max_tokens: 500,
+      ...(model.startsWith("gemini-2.5")
+        ? { reasoning_effort: "none" as const }
+        : {}),
       response_format: zodResponseFormat(
-        groundedExplanationSchema,
+        providerExplanationSchema,
         "grounded_explanation",
       ),
     });
@@ -281,7 +353,18 @@ export async function explainAnalysis(input: {
       );
     }
 
-    return explanation.summary;
+    const validated = groundedExplanationSchema.safeParse(explanation);
+    if (!validated.success) {
+      throw new GeminiServiceError(
+        "Gemini returned an invalid explanation.",
+        "invalid_response",
+        true,
+        undefined,
+        { cause: validated.error },
+      );
+    }
+
+    return validated.data.summary;
   } catch (error) {
     throw mapSdkError(error);
   }
